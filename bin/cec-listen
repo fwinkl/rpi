@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Script to listen on the HDMI port and start Kodi on demand.
+#
+# 1) sudo apt install cec-utils
+# 2) Run `cec-client --log-level 4` on the RPI and switch the TV to the HDMI channel
+# 3) Note the "source activated..." line and replace the pattern below
+#
+# Author: Frank Winklmeier
+
+start_kodi() {
+    if ! pgrep -x kodi; then
+        echo "Starting Kodi..."
+        /usr/bin/kodi --standalone
+        echo "Kodi exited..."
+    else
+        echo "Kodi already running"
+    fi
+}
+
+listen_cec() {
+    while read msg; do
+        #echo "$msg"
+        case "$msg" in
+            *"source activated: Recorder 1 (1)"*)
+                return 10
+                ;;
+        esac
+    done < <(cec-client --log-level 4)
+}
+
+while true; do
+    listen_cec
+    rc=$?
+    # Break on Ctrl-C
+    test $rc -gt 128 && break
+    # Start Kodi
+    test $rc -eq 10 && start_kodi
+done
